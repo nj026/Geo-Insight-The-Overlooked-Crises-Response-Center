@@ -5,7 +5,7 @@
 
 ## 1. Executive Summary
 
-This project builds a humanitarian funding gap analysis platform on Databricks that identifies "overlooked" crises — situations where high human need coexists with disproportionately low funding. Raw UN OCHA datasets are transformed through a Medallion architecture (Bronze → Silver → Gold) into 5 analytical tables that power a RAG-based conversational agent via Databricks Genie Space. The agent answers natural-language questions such as "which crises are most overlooked?" and "show me food security hotspots with <10% funding." along with appopriate data visualizations.
+This project builds a humanitarian funding gap analysis platform on Databricks that identifies "overlooked" crises — situations where high human need coexists with disproportionately low funding. Raw UN OCHA datasets are transformed through a Medallion architecture (Bronze → Silver → Gold) into 5 analytical tables that power a RAG-based conversational agent via Databricks Genie Space. The agent answers natural-language questions such as "which crises are most overlooked?" and "show me food security hotspots with <10% funding." along with appropriate data visualizations.
 
 ---
 
@@ -63,7 +63,7 @@ Two external datasets were ingested separately to resolve structural join gaps i
 | Dataset | Source | Purpose | Silver Table |
 | --- | --- | --- | --- |
 | Countries & Territories Taxonomy | [HDX](https://data.humdata.org/dataset/countries-and-territories) | Authoritative ISO3 → country name, region, sub-region, coordinates, income level mapping. Used as fallback for country name resolution and as the canonical region assignment across all gold tables. | `njyoti_silver_unocha_country_territory_taxonomy` |
-| HPC Global Cluster Taxonomy | [HPC API](https://api.hpc.tools/v1/public/global-cluster) | Bridge table mapping cluster codes ↔ cluster IDs ↔ canonical cluster names (22 rows). Resolves the HNO→FTS sector join — HNO reports sectors by code/free-text while FTS reports by cluster ID. This bridge raised the sector match rate from 67% to 95.4%. | `njyoti_silver_unocha_hpc_global_cluster_taxonomy` |
+| HPC Global Cluster Taxonomy | [HPC API](https://api.hpc.tools/v1/public/global-cluster) | Bridge table mapping cluster codes ↔ cluster IDs ↔ canonical cluster names (22 rows). Resolves the HNO→FTS sector join — HNO reports sectors by code/free-text while FTS reports by cluster ID. Replaced fragile regex matching (38%→67%) with a deterministic equi-join via `cluster_id`, achieving ~95% sector match rate. | `njyoti_silver_unocha_hpc_global_cluster_taxonomy` |
 
 Both were ingested directly as silver-layer reference tables (no bronze stage) since they arrived already clean and typed from their respective APIs/downloads.
 
@@ -114,7 +114,7 @@ flowchart TD
 
 **Strategy:** Manifest-driven bulk ingestion. A file manifest catalogs all source files; a sheet manifest enumerates every Excel sheet. Ingestion logic:
 
-- **CSV files:** Grouped by dataset classification (regex on filename), unioned into one table per logical dataset. 9 source file groups → 18 bronze tables.
+- **CSV files:** Grouped by dataset classification (regex on filename), unioned into one table per logical dataset → 18 bronze tables.
 - **Excel files:** Each sheet extracted as an independent table. 67 workbooks × ~7 sheets each → 7 union tables (post-rebrand INFORM) + ~168 stage tables (pre-rebrand GCSI, excluded from downstream processing).
 - **Exclusions validated empirically:** GCSI-era tables (2019–2020) excluded after confirming they are strict subsets of the post-rebrand data. COVID-specific FTS variant confirmed as a column-subset of global FTS.
 
@@ -122,14 +122,15 @@ flowchart TD
 
 ### 6.3 Silver Layer
 
-23 cleaned, typed, join-ready tables. Transformations organized by structural pattern:
+23 cleaned, typed, join-ready tables (including 2 external reference tables). Transformations organized by structural pattern:
 
-| Phase | Tables | Key Challenge |
+| Phase | Source Data | Key Challenge |
 | --- | --- | --- |
 | INFORM Severity (7 tables) | Multi-row headers, 67-release pivot columns, schema drift across monthly snapshots | Generalized header extraction (Pattern A/B/C detection) |
 | FTS Funding (4 tables) | String-typed USD amounts, union of global/cluster/COVID variants | Type casting, deduplication |
-| HPC HNO (3 tables) | HXL tag rows embedded as data, sector codes vs. free-text names | Tag-row removal, numeric casting |
-| Allocations, COD, HRP, Taxonomy | Straightforward type normalization | Consistent iso3/year join keys |
+| HPC HNO (1 table) | HXL tag rows embedded as data, 3 yearly CSVs merged | Tag-row removal, numeric casting, year-union |
+| Allocations, COD, HRP, Contributions, Taxonomy | Straightforward type normalization | Consistent iso3/year join keys |
+| External references (2 tables) | C&T Taxonomy (HDX) + HPC Global Cluster Taxonomy (API) | Ingested directly as silver; no bronze stage needed |
 
 **Deduplication highlight:** INFORM temporal data reduced from 251,008 rows to 6,889 rows (each monthly snapshot contained full history — only the latest value per crisis×month retained).
 
@@ -147,7 +148,7 @@ flowchart TD
 
 **Sources joined in T1:** FTS + HRP + INFORM Severity + INFORM Trends + COD Population + CERF/CBPF Allocations + Crisis Registry + Country & Territory Taxonomy.
 
-**Column comments applied** across all gold tables for Unity Catalog discoverability (54 comments total).
+**Column comments applied** across gold tables for Unity Catalog discoverability (54 comments across T1, T2, T3, T5).
 
 ---
 
@@ -283,8 +284,7 @@ Off-topic messages tested (unrelated domains, prompt injection attempts). Genie 
 
 | Limitation | Detail |
 | --- | --- |
-| Sector match: 66.8% overall | GBV, Child Protection, HLP, Mine Action = 0% (reported under parent "Protection" in FTS) |
-| WASH sector: 57% match | Partial FTS cluster name alignment |
+| Sector FTS funding coverage: ~95% | After taxonomy join v2 (up from 38% with regex). Remaining ~5% are HNO cluster codes without a taxonomy entry. |
 | Static population denominator | No temporal population growth adjustment |
 | 2026 data provisional | Both INFORM severity and FTS funding are partial-year |
 
@@ -300,7 +300,7 @@ Off-topic messages tested (unrelated domains, prompt injection attempts). Genie 
 
 ## 11. Future Scope
 
-These items could be implemented as an extention to this effort.
+These items could be implemented as an extension to this effort.
 
 - **Lakeview Dashboard:** Donor-facing visual layer for human validation independent of the agent
 - **Vector Search over OCHA situation reports:** Ingest qualitative reports to enable synthesis beyond structured data
