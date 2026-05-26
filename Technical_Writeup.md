@@ -196,6 +196,27 @@ overlooked_score = severity_norm
 | `persistence_multiplier` | 1.0 + (years_below_threshold / 5) × 0.5 | [1.0, 1.5] | Amplifies chronic underfunding |
 | `allocation_neglect` | 1 − MIN(1, allocations/requirements) | [0, 1] | Higher = less CERF/CBPF coverage |
 
+
+### Score Range & Interpretation
+
+The composite `overlooked_score` has a **theoretical range of 0 to ~1.95** — it can exceed 1.0 due to the two multipliers.
+
+**Why it can exceed 1.0:** The four base components (each [0, 1]) multiply together, then are scaled by `trend_multiplier` (max 1.3) and `persistence_multiplier` (max 1.5). Maximum theoretical amplification: 1.3 × 1.5 = 1.95×. In practice, most scores fall well below 1.0 because the multiplicative structure means any single low component pulls the entire product down.
+
+**Practical distribution:** Scores cluster in the [0, 0.5] range for the majority of country-years. The top-ranked crises typically score 0.3–0.6.
+
+**Interpretation guide:**
+
+| Score Range | Severity Level | Interpretation |
+| --- | --- | --- |
+| 0.0–0.1 | Low | Well-funded or low-severity — not overlooked |
+| 0.1–0.3 | Moderate | Some funding gap or elevated severity, but partial response exists |
+| 0.3–0.5 | High | Significant neglect relative to documented need |
+| 0.5–0.8 | Very High | Severely overlooked — large gap, meaningful scale, limited response |
+| 0.8+ | Extreme | Maximum neglect across all dimensions, compounded by worsening trend and chronic underfunding |
+
+**Design implication:** The score is ordinal — relative rankings matter more than absolute values. Use `rank_in_year` for direct comparisons within a year. Cross-year score comparisons are valid but should account for the 2026 INFORM scale change (see Assumption A6).
+
 ### Calibration
 
 - **Underfunded threshold:** 33% — empirically calibrated from P25–P33 band of `fts_percent_funded` distribution (n=1,052 valid rows). Below this threshold, a country-year is counted toward `years_below_threshold`.

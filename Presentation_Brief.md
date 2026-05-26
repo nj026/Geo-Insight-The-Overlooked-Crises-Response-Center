@@ -23,8 +23,8 @@ Title: "Finding the Crises No One Is Watching"
 The international humanitarian system has no single tool that answers: *"Where is the biggest mismatch between documented human need and actual response?"*
 
 - Funding data (FTS), severity assessments (INFORM), sector needs (HNO), and emergency allocations (CERF/CBPF) live in 10+ separate systems
-- Joining them requires reconciling inconsistent schemas, conflicting naming conventions, and structural gaps across 67 Excel workbooks and ~30 CSVs
-- Analysts repeat this work for every question, with no institutional memory
+- Joining them requires reconciling inconsistent schemas, conflicting naming conventions, and structural gaps across numerous Excel workbooks and CSVs
+- This process can be manual, cumbersome, with no institutionalized memory and critical!
 - Result: systematic blind spots where severe crises receive negligible funding for *years* without detection
 
 **Speaker note:** "This isn't a technology problem. It's an attention problem. The data exists — but no one can see the full picture."
@@ -64,6 +64,12 @@ The "Stable Catastrophe" problem:
 
 Formula: `overlooked_score = severity × funding_gap × scale × trend × persistence × allocation_neglect`
 
+
+Scores cluster in the [0, 0.5] range for the majority of country-years. Overlooked crises typically score 0.3–0.6.
+
+- 0.5–0.8 | Very High | Severely overlooked — large gap, meaningful scale, limited response |
+- 0.8+ | Extreme | Maximum neglect
+
 **Why multiplicative (not additive):** A fully-funded crisis scores ZERO regardless of severity. The formula enforces intersection — a crisis must be simultaneously severe, underfunded, large-scale, and persistently neglected.
 
 | Dimension | What It Measures | Why It's Necessary |
@@ -75,7 +81,7 @@ Formula: `overlooked_score = severity × funding_gap × scale × trend × persis
 | Persistence | Chronic or one-time? | 4+ consecutive underfunded years = structural neglect |
 | Allocation Neglect | Are last-resort funds also missing? | Signals failure even at emergency-response level |
 
-**Key design choice:** Severity is linear, not amplified. Ecuador (severity 2.8, 92% unfunded, worsening, persistent) IS highly overlooked — amplifying severity would incorrectly demote it from rank #4 to #22.
+**Key design choice:** Severity is linear, not amplified. Ecuador (severity 2.8, 92% unfunded, worsening, persistent) IS  overlooked — amplifying severity would incorrectly demote it to a lower rank.
 
 **Speaker note:** "Each dimension answers a different question. The multiplicative design means you can't game the ranking — you can't be 'overlooked' if you're well-funded, and you can't rank high from severity alone."
 
@@ -101,9 +107,8 @@ The formula was stress-tested against 4 alternative scoring designs on 377 score
 Validation results of chosen formula:
 - **Spread:** Top-ranked crises score 6.5× higher than bottom (sufficient discrimination)
 - **Face validity:** 7 of 8 known severe underfunded crises appear in the top 20 (Afghanistan, Yemen, South Sudan, DRC, Somalia, Syria, Myanmar)
-- **Stability:** Removing any single component changes rankings by less than ρ=0.004 — no fragile dependencies
+- **Stability:** Removing any single component changes rankings by less than .4% — no fragile dependencies
 
-**Speaker note:** "We didn't choose the first formula that looked reasonable. We tested alternatives that professional analysts might suggest and showed — with data — why each fails the 'overlooked' test."
 
 ---
 
